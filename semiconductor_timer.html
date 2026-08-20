@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>반도체 경진대회 타이머</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Roboto+Mono:wght@700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #0B2545;
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+
+  .stage {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background:
+      radial-gradient(circle at 20% 15%, rgba(79,168,232,0.12), transparent 45%),
+      radial-gradient(circle at 85% 85%, rgba(239,159,39,0.08), transparent 45%),
+      #0B2545;
+    color: #fff;
+    padding-top: 7vh;
+  }
+
+  /* 회로기판 느낌의 배경 라인 */
+  .grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(79,168,232,0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(79,168,232,0.06) 1px, transparent 1px);
+    background-size: 44px 44px;
+    pointer-events: none;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 2.2vh;
+    z-index: 2;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 1.6vh;
+    letter-spacing: 0.35em;
+    color: #4FA8E8;
+    font-weight: 700;
+    margin-bottom: 1.2vh;
+    padding: 0.5vh 1.4vh;
+    border: 1px solid rgba(79,168,232,0.4);
+    border-radius: 4px;
+  }
+  .title {
+    font-size: 3.6vh;
+    font-weight: 900;
+    letter-spacing: -0.01em;
+  }
+  .title .dot { color: #EF9F27; }
+
+  .timer {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 22vh;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    z-index: 2;
+    text-shadow: 0 0 40px rgba(79,168,232,0.25);
+    transition: color 0.4s;
+  }
+  .timer .sep { color: #4FA8E8; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0.35; } }
+
+  .timer.warn { color: #EF9F27; }
+  .timer.warn .sep { color: #EF9F27; }
+  .timer.danger { color: #ff5b5b; animation: pulse 1s ease-in-out infinite; }
+  .timer.danger .sep { color: #ff5b5b; }
+  @keyframes pulse { 50% { opacity: 0.6; } }
+
+  .sub {
+    margin-top: 2.4vh;
+    font-size: 2.2vh;
+    color: #9db4cf;
+    font-weight: 500;
+    z-index: 2;
+  }
+  .sub b { color: #fff; font-weight: 700; }
+
+  .done {
+    font-size: 8vh;
+    font-weight: 900;
+    color: #EF9F27;
+    z-index: 2;
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+
+  /* 컨트롤 바 — 항상 상단에 표시 */
+  .controls {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 1.4vh;
+    padding: 1.4vh;
+    background: rgba(6,18,36,0.92);
+    border-bottom: 1px solid rgba(79,168,232,0.3);
+    z-index: 10;
+    transition: all 0.25s ease;
+  }
+  .controls.hidden { display: none; }
+
+  .show-btn {
+    position: absolute;
+    top: 1.2vh;
+    right: 1.4vh;
+    background: rgba(79,168,232,0.15);
+    border: 1px solid rgba(79,168,232,0.4);
+    color: #4FA8E8;
+    font-size: 1.5vh;
+    padding: 0.6vh 1.2vh;
+    border-radius: 5px;
+    cursor: pointer;
+    z-index: 11;
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+
+  .controls label { font-size: 1.7vh; color: #9db4cf; }
+  .controls input {
+    background: #0B2545;
+    border: 1px solid rgba(79,168,232,0.5);
+    color: #fff;
+    font-size: 1.8vh;
+    padding: 0.7vh 1vh;
+    border-radius: 5px;
+    width: 8vh;
+    text-align: center;
+    font-family: 'Roboto Mono', monospace;
+  }
+  .controls button {
+    background: #4FA8E8;
+    border: none;
+    color: #06182A;
+    font-size: 1.7vh;
+    font-weight: 700;
+    padding: 0.8vh 2.2vh;
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: 'Noto Sans KR', sans-serif;
+    transition: filter 0.15s;
+  }
+  .controls button:hover { filter: brightness(1.1); }
+  .controls button.ghost {
+    background: transparent;
+    border: 1px solid rgba(79,168,232,0.5);
+    color: #4FA8E8;
+  }
+  .controls button.amber { background: #EF9F27; }
+
+  .hint {
+    position: absolute;
+    top: 1.4vh;
+    right: 1.8vh;
+    font-size: 1.3vh;
+    color: rgba(157,180,207,0.45);
+    z-index: 3;
+  }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <div class="grid"></div>
+
+  <div class="header">
+    <div class="badge">렛유인에듀 SEMI-Cup 2026</div>
+    <div class="title">제1회 반도체 공정 데이터 분석 경진대회<span class="dot">.</span></div>
+  </div>
+
+  <div class="timer" id="timer">6<span class="sep">:</span>20<span class="sep">:</span>00</div>
+  <div class="sub">종료 <b id="endLabel">16:50</b></div>
+
+  <div class="controls" id="controls">
+    <label>종료 시각</label>
+    <input type="time" id="endTime" value="16:50">
+    <button id="startBtn" onclick="start()">시작</button>
+    <button class="amber" id="pauseBtn" onclick="togglePause()" style="display:none">일시정지</button>
+    <button class="ghost" onclick="reset()">리셋</button>
+    <button class="ghost" onclick="pinToggle()" id="pinBtn">설정 숨김</button>
+  </div>
+  <button class="show-btn" id="showBtn" onclick="pinToggle()" style="display:none">⚙ 설정</button>
+</div>
+
+<script>
+  const timerEl = document.getElementById('timer');
+  const subEl = document.querySelector('.sub');
+  const endLabel = document.getElementById('endLabel');
+  const endInput = document.getElementById('endTime');
+  const startBtn = document.getElementById('startBtn');
+  const pauseBtn = document.getElementById('pauseBtn');
+  const controls = document.getElementById('controls');
+
+  let targetTime = null;   // 종료 시각(Date)
+  let ticking = null;
+  let paused = false;
+  let pausedRemaining = 0;
+
+  function getEndDate() {
+    const [h, m] = endInput.value.split(':').map(Number);
+    const d = new Date();
+    d.setHours(h, m, 0, 0);
+    // 종료 시각이 이미 지났으면 다음날로 (자정 넘김 방지용)
+    if (d.getTime() <= Date.now() && !ticking) {
+      // 그대로 두되, 남은시간 음수면 종료 처리됨
+    }
+    return d;
+  }
+
+  function fmt(ms) {
+    if (ms < 0) ms = 0;
+    const total = Math.floor(ms / 1000);
+    const h = String(Math.floor(total / 3600)).padStart(2, '0');
+    const m = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
+    const s = String(total % 60).padStart(2, '0');
+    return `${h}<span class="sep">:</span>${m}<span class="sep">:</span>${s}`;
+  }
+
+  function render(ms) {
+    if (ms <= 0) {
+      timerEl.innerHTML = '00<span class="sep">:</span>00<span class="sep">:</span>00';
+      timerEl.className = 'timer danger';
+      subEl.innerHTML = '<b style="color:#EF9F27">제출 마감 · 수고하셨습니다</b>';
+      clearInterval(ticking);
+      ticking = null;
+      startBtn.style.display = '';
+      pauseBtn.style.display = 'none';
+      startBtn.textContent = '시작';
+      return;
+    }
+    timerEl.innerHTML = fmt(ms);
+    const mins = ms / 60000;
+    if (mins <= 5) timerEl.className = 'timer danger';
+    else if (mins <= 30) timerEl.className = 'timer warn';
+    else timerEl.className = 'timer';
+  }
+
+  function tick() {
+    const remaining = targetTime - Date.now();
+    render(remaining);
+  }
+
+  function start() {
+    endLabel.textContent = endInput.value;
+    targetTime = getEndDate();
+    if (targetTime - Date.now() <= 0) {
+      render(0);
+      return;
+    }
+    paused = false;
+    clearInterval(ticking);
+    tick();
+    ticking = setInterval(tick, 250);
+    startBtn.style.display = 'none';
+    pauseBtn.style.display = '';
+    pauseBtn.textContent = '일시정지';
+  }
+
+  function togglePause() {
+    if (!ticking && !paused) return;
+    if (!paused) {
+      // 일시정지: 남은 시간 저장
+      pausedRemaining = targetTime - Date.now();
+      clearInterval(ticking);
+      ticking = null;
+      paused = true;
+      pauseBtn.textContent = '재개';
+    } else {
+      // 재개: 남은 시간 기준으로 종료 시각 재설정
+      targetTime = new Date(Date.now() + pausedRemaining);
+      paused = false;
+      tick();
+      ticking = setInterval(tick, 250);
+      pauseBtn.textContent = '일시정지';
+    }
+  }
+
+  function reset() {
+    clearInterval(ticking);
+    ticking = null;
+    paused = false;
+    targetTime = null;
+    endLabel.textContent = endInput.value;
+    // 종료 시각까지 남은 시간을 미리보기로 표시
+    const preview = getEndDate() - Date.now();
+    render(preview > 0 ? preview : 6*3600000 + 20*60000);
+    if (preview <= 0) timerEl.className = 'timer';
+    subEl.innerHTML = '종료 <b>'+endInput.value+'</b>';
+    startBtn.style.display = '';
+    pauseBtn.style.display = 'none';
+    startBtn.textContent = '시작';
+  }
+
+  function pinToggle() {
+    controls.classList.toggle('hidden');
+    const hidden = controls.classList.contains('hidden');
+    document.getElementById('showBtn').style.display = hidden ? 'block' : 'none';
+  }
+
+  endInput.addEventListener('change', () => {
+    endLabel.textContent = endInput.value;
+    if (!ticking) reset();
+  });
+
+  // 초기 미리보기
+  reset();
+</script>
+</body>
+</html>
